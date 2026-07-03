@@ -1,9 +1,12 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Literal
 
 from pydantic import EmailStr
 from sqlalchemy import DateTime
-from sqlmodel import Field, SQLModel
+from sqlmodel import AutoString, Field, Relationship, SQLModel
+
+Priority = Literal["high", "medium", "low"]
 
 
 def get_datetime_utc() -> datetime:
@@ -49,9 +52,13 @@ class UpdatePassword(SQLModel):
 class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
+    share_token: str | None = Field(default=None, index=True, unique=True)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    tasks: list["Task"] = Relationship(
+        back_populates="owner", cascade_delete=True
     )
 
 
@@ -64,6 +71,54 @@ class UserPublic(UserBase):
 class UsersPublic(SQLModel):
     data: list[UserPublic]
     count: int
+
+
+# Shared task properties
+class TaskBase(SQLModel):
+    title: str = Field(min_length=1, max_length=255)
+    subject: str | None = Field(default=None, max_length=255)
+    due_date: datetime = Field(sa_type=DateTime(timezone=True))  # type: ignore
+    priority: Priority = Field(default="medium", sa_type=AutoString)
+    is_done: bool = False
+
+
+class TaskCreate(TaskBase):
+    pass
+
+
+class TaskUpdate(SQLModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    subject: str | None = Field(default=None, max_length=255)
+    due_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))  # type: ignore
+    priority: Priority | None = None
+    is_done: bool | None = None
+
+
+class Task(TaskBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    owner: User | None = Relationship(back_populates="tasks")
+
+
+class TaskPublic(TaskBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class TasksPublic(SQLModel):
+    data: list[TaskPublic]
+    count: int
+
+
+class ShareLink(SQLModel):
+    share_token: str
+    share_url: str
 
 
 # Generic message

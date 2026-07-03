@@ -29,6 +29,44 @@ export type PrivateUserCreate = {
     is_verified?: boolean;
 };
 
+export type ShareLink = {
+    share_token: string;
+    share_url: string;
+};
+
+export type TaskCreate = {
+    title: string;
+    subject?: (string | null);
+    due_date: string;
+    priority?: 'high' | 'medium' | 'low';
+    is_done?: boolean;
+};
+
+export type priority = 'high' | 'medium' | 'low';
+
+export type TaskPublic = {
+    title: string;
+    subject?: (string | null);
+    due_date: string;
+    priority?: 'high' | 'medium' | 'low';
+    is_done?: boolean;
+    id: string;
+    created_at?: (string | null);
+};
+
+export type TasksPublic = {
+    data: Array<TaskPublic>;
+    count: number;
+};
+
+export type TaskUpdate = {
+    title?: (string | null);
+    subject?: (string | null);
+    due_date?: (string | null);
+    priority?: ('high' | 'medium' | 'low' | null);
+    is_done?: (boolean | null);
+};
+
 export type Token = {
     access_token: string;
     token_type?: string;
@@ -121,6 +159,35 @@ export type PrivateCreateUserData = {
 };
 
 export type PrivateCreateUserResponse = (UserPublic);
+
+export type TasksReadTasksResponse = (TasksPublic);
+
+export type TasksCreateTaskData = {
+    requestBody: TaskCreate;
+};
+
+export type TasksCreateTaskResponse = (TaskPublic);
+
+export type TasksUpdateTaskData = {
+    requestBody: TaskUpdate;
+    taskId: string;
+};
+
+export type TasksUpdateTaskResponse = (TaskPublic);
+
+export type TasksDeleteTaskData = {
+    taskId: string;
+};
+
+export type TasksDeleteTaskResponse = (Message);
+
+export type TasksShareTasksResponse = (ShareLink);
+
+export type TasksReadSharedTasksData = {
+    token: string;
+};
+
+export type TasksReadSharedTasksResponse = (TasksPublic);
 
 export type UsersReadUsersData = {
     limit?: number;

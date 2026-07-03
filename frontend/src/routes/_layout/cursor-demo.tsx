@@ -81,10 +81,18 @@ const promptResponses: Record<string, string> = {
 
 function matchResponse(prompt: string): string {
   const lower = prompt.toLowerCase()
-  if (lower.includes("auth") || lower.includes("login") || lower.includes("jwt")) {
+  if (
+    lower.includes("auth") ||
+    lower.includes("login") ||
+    lower.includes("jwt")
+  ) {
     return promptResponses.auth
   }
-  if (lower.includes("bug") || lower.includes("error") || lower.includes("fix")) {
+  if (
+    lower.includes("bug") ||
+    lower.includes("error") ||
+    lower.includes("fix")
+  ) {
     return promptResponses.bug
   }
   if (
@@ -157,8 +165,8 @@ function CursorDemo() {
           <CardHeader>
             <CardTitle>Prompt playground</CardTitle>
             <CardDescription>
-              Type a request like you would in Cursor chat. The reply below is
-              a simplified preview of how I&apos;d approach it.
+              Type a request like you would in Cursor chat. The reply below is a
+              simplified preview of how I&apos;d approach it.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -197,10 +205,7 @@ function CursorDemo() {
               </Button>
             </div>
             <div className="space-y-2">
-              <label
-                htmlFor="accent-color"
-                className="text-sm font-medium"
-              >
+              <label htmlFor="accent-color" className="text-sm font-medium">
                 Accent color (updates the hero glow)
               </label>
               <div className="flex items-center gap-3">
@@ -258,10 +263,7 @@ function CursorDemo() {
                 body: "Point me at files, folders, docs, or terminal output so I stay grounded in your project.",
               },
             ].map(({ step, title, body }) => (
-              <li
-                key={step}
-                className="rounded-lg border p-4"
-              >
+              <li key={step} className="rounded-lg border p-4">
                 <span className="text-xs font-semibold text-primary">
                   {step}
                 </span>

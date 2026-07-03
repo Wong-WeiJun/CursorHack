@@ -1,5 +1,5 @@
 import { Link as RouterLink } from "@tanstack/react-router"
-import { Home, Sparkles, Users } from "lucide-react"
+import { Home, ListTodo, Sparkles, Users } from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -18,6 +18,11 @@ const baseItems: Item[] = [
     icon: Home,
     title: "Dashboard",
     path: "/dashboard",
+  },
+  {
+    icon: ListTodo,
+    title: "Tasks",
+    path: "/tasks",
   },
   {
     icon: Sparkles,

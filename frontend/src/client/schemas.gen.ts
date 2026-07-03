@@ -126,6 +126,209 @@ export const PrivateUserCreateSchema = {
     title: 'PrivateUserCreate'
 } as const;
 
+export const ShareLinkSchema = {
+    properties: {
+        share_token: {
+            type: 'string',
+            title: 'Share Token'
+        },
+        share_url: {
+            type: 'string',
+            title: 'Share Url'
+        }
+    },
+    type: 'object',
+    required: ['share_token', 'share_url'],
+    title: 'ShareLink'
+} as const;
+
+export const TaskCreateSchema = {
+    properties: {
+        title: {
+            type: 'string',
+            maxLength: 255,
+            minLength: 1,
+            title: 'Title'
+        },
+        subject: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Subject'
+        },
+        due_date: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Due Date'
+        },
+        priority: {
+            type: 'string',
+            enum: ['high', 'medium', 'low'],
+            title: 'Priority',
+            default: 'medium'
+        },
+        is_done: {
+            type: 'boolean',
+            title: 'Is Done',
+            default: false
+        }
+    },
+    type: 'object',
+    required: ['title', 'due_date'],
+    title: 'TaskCreate'
+} as const;
+
+export const TaskPublicSchema = {
+    properties: {
+        title: {
+            type: 'string',
+            maxLength: 255,
+            minLength: 1,
+            title: 'Title'
+        },
+        subject: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Subject'
+        },
+        due_date: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Due Date'
+        },
+        priority: {
+            type: 'string',
+            enum: ['high', 'medium', 'low'],
+            title: 'Priority',
+            default: 'medium'
+        },
+        is_done: {
+            type: 'boolean',
+            title: 'Is Done',
+            default: false
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        created_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['title', 'due_date', 'id'],
+    title: 'TaskPublic'
+} as const;
+
+export const TaskUpdateSchema = {
+    properties: {
+        title: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255,
+                    minLength: 1
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Title'
+        },
+        subject: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Subject'
+        },
+        due_date: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Due Date'
+        },
+        priority: {
+            anyOf: [
+                {
+                    type: 'string',
+                    enum: ['high', 'medium', 'low']
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Priority'
+        },
+        is_done: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Is Done'
+        }
+    },
+    type: 'object',
+    title: 'TaskUpdate'
+} as const;
+
+export const TasksPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/TaskPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'TasksPublic'
+} as const;
+
 export const TokenSchema = {
     properties: {
         access_token: {

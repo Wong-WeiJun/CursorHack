@@ -1,0 +1,55 @@
+import streamlit as st
+
+st.set_page_config(page_title="SurviveUni Dashboard", layout="wide")
+
+# Background style
+st.markdown("""
+    <style>
+    .main {
+        background: linear-gradient(to bottom right, #f8fafc, #eef2ff);
+    }
+    .card {
+        padding: 20px;
+        border-radius: 20px;
+        background-color: white;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Header
+st.title("👋 Good Afternoon Jun")
+st.subheader("Ready to conquer today's deadlines?")
+
+# Stats cards
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.markdown('<div class="card">📚 Tasks<br><h2>12</h2></div>', unsafe_allow_html=True)
+
+with col2:
+    st.markdown('<div class="card">✅ Completed<br><h2>86</h2></div>', unsafe_allow_html=True)
+
+with col3:
+    st.markdown('<div class="card">⏰ Deadlines<br><h2>4</h2></div>', unsafe_allow_html=True)
+
+with col4:
+    st.markdown('<div class="card">📖 Subjects<br><h2>5</h2></div>', unsafe_allow_html=True)
+
+st.write("")
+
+# Section
+st.markdown("## 📌 Upcoming Tasks")
+
+tasks = [
+    "Finish React UI redesign",
+    "Fix login authentication bug",
+    "Submit assignment report",
+]
+
+for t in tasks:
+    st.markdown(f"- {t}")
+
+# Button
+if st.button("+ Add Task"):
+    st.success("Task creation triggered!")

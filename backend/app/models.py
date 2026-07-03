@@ -7,6 +7,7 @@ from sqlalchemy import DateTime
 from sqlmodel import AutoString, Field, Relationship, SQLModel
 
 Priority = Literal["high", "medium", "low"]
+Category = Literal["class", "club", "campus", "social", "personal"]
 
 
 def get_datetime_utc() -> datetime:
@@ -75,6 +76,8 @@ class UsersPublic(SQLModel):
 class TaskBase(SQLModel):
     title: str = Field(min_length=1, max_length=255)
     subject: str | None = Field(default=None, max_length=255)
+    category: Category = Field(default="class", sa_type=AutoString)
+    notes: str | None = Field(default=None, max_length=2000)
     due_date: datetime = Field(sa_type=DateTime(timezone=True))  # type: ignore
     priority: Priority = Field(default="medium", sa_type=AutoString)
     is_done: bool = False
@@ -87,6 +90,8 @@ class TaskCreate(TaskBase):
 class TaskUpdate(SQLModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     subject: str | None = Field(default=None, max_length=255)
+    category: Category | None = None
+    notes: str | None = Field(default=None, max_length=2000)
     due_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))  # type: ignore
     priority: Priority | None = None
     is_done: bool | None = None

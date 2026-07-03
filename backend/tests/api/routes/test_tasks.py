@@ -17,6 +17,8 @@ def test_create_task(
     data = {
         "title": "Finish CS assignment",
         "subject": "CS101",
+        "category": "class",
+        "notes": "Chapters 3-5",
         "due_date": _due(3),
         "priority": "high",
     }
@@ -29,9 +31,43 @@ def test_create_task(
     content = r.json()
     assert content["title"] == data["title"]
     assert content["subject"] == data["subject"]
+    assert content["category"] == "class"
+    assert content["notes"] == "Chapters 3-5"
     assert content["priority"] == "high"
     assert content["is_done"] is False
     assert "id" in content
+
+
+def test_create_task_defaults_category(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    r = client.post(
+        f"{settings.API_V1_STR}/tasks/",
+        headers=normal_user_token_headers,
+        json={"title": "No category given", "due_date": _due(1)},
+    )
+    assert r.status_code == 200
+    assert r.json()["category"] == "class"
+
+
+def test_update_task_category_and_notes(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    create = client.post(
+        f"{settings.API_V1_STR}/tasks/",
+        headers=normal_user_token_headers,
+        json={"title": "Club meeting", "due_date": _due(2)},
+    )
+    task_id = create.json()["id"]
+    r = client.patch(
+        f"{settings.API_V1_STR}/tasks/{task_id}",
+        headers=normal_user_token_headers,
+        json={"category": "club", "notes": "Bring the banner"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["category"] == "club"
+    assert body["notes"] == "Bring the banner"
 
 
 def test_create_task_missing_fields(

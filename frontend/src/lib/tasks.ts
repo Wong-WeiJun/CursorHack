@@ -1,5 +1,90 @@
 import type { TaskPublic } from "@/client"
 
+export type TaskCategory = "class" | "club" | "campus" | "social" | "personal"
+
+export const CATEGORIES: TaskCategory[] = [
+  "class",
+  "club",
+  "campus",
+  "social",
+  "personal",
+]
+
+export const categoryLabel: Record<TaskCategory, string> = {
+  class: "Class",
+  club: "Club",
+  campus: "Campus",
+  social: "Friends",
+  personal: "Personal",
+}
+
+// Placeholder shown in the subject/label field, tuned to each category.
+export const categorySubjectHint: Record<TaskCategory, string> = {
+  class: "e.g. CS101",
+  club: "e.g. Chess Club",
+  campus: "e.g. Career Fair",
+  social: "e.g. Study group",
+  personal: "e.g. Errands",
+}
+
+export function normalizeCategory(
+  value: string | null | undefined,
+): TaskCategory {
+  return CATEGORIES.includes(value as TaskCategory)
+    ? (value as TaskCategory)
+    : "class"
+}
+
+export type SortKey = "due" | "priority"
+
+const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
+export function sortTasks(tasks: TaskPublic[], sortBy: SortKey): TaskPublic[] {
+  const copy = [...tasks]
+  copy.sort((a, b) => {
+    const byDue =
+      new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    if (sortBy === "priority") {
+      const byPriority =
+        (priorityRank[a.priority ?? "medium"] ?? 1) -
+        (priorityRank[b.priority ?? "medium"] ?? 1)
+      return byPriority || byDue
+    }
+    return byDue
+  })
+  return copy
+}
+
+export function searchTasks(tasks: TaskPublic[], query: string): TaskPublic[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return tasks
+  return tasks.filter(
+    (t) =>
+      t.title.toLowerCase().includes(q) ||
+      (t.subject?.toLowerCase().includes(q) ?? false) ||
+      (t.notes?.toLowerCase().includes(q) ?? false),
+  )
+}
+
+export interface CategoryBreakdown {
+  category: TaskCategory
+  open: number
+  total: number
+}
+
+export function categoryBreakdown(tasks: TaskPublic[]): CategoryBreakdown[] {
+  return CATEGORIES.map((category) => {
+    const inCat = tasks.filter(
+      (t) => normalizeCategory(t.category) === category,
+    )
+    return {
+      category,
+      open: inCat.filter((t) => !t.is_done).length,
+      total: inCat.length,
+    }
+  }).filter((c) => c.total > 0)
+}
+
 export type Urgency = "overdue" | "soon" | "today" | "week" | "later"
 
 const HOUR = 60 * 60 * 1000

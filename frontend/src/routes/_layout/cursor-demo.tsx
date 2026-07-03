@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils"
 export const Route = createFileRoute("/_layout/cursor-demo")({
   component: CursorDemo,
   head: () => ({
-    meta: [{ title: "Cursor Demo - FastSkeleton" }],
+    meta: [{ title: "Cursor Demo - Duely" }],
   }),
 })
 

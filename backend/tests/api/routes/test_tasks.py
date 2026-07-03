@@ -58,9 +58,7 @@ def test_read_tasks_sorted_by_due_date(
         headers=normal_user_token_headers,
         json={"title": "Sooner", "due_date": _due(1), "priority": "high"},
     )
-    r = client.get(
-        f"{settings.API_V1_STR}/tasks/", headers=normal_user_token_headers
-    )
+    r = client.get(f"{settings.API_V1_STR}/tasks/", headers=normal_user_token_headers)
     assert r.status_code == 200
     content = r.json()
     assert content["count"] >= 2

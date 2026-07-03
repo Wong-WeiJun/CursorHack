@@ -10,19 +10,29 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
+      - key: PROJECT_NAME
+        value: SurviveUni
       - key: ENVIRONMENT
         value: production
+      # Neon connection string, e.g.
+      # postgresql://user:pass@ep-xxx.region.aws.neon.tech/db?sslmode=require
       - key: DATABASE_URL
-        sync: false  
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: FIRST_SUPERUSER
         value: admin@example.com
       - key: FIRST_SUPERUSER_PASSWORD
-        sync: false  
+        sync: false
+      # Your Vercel URL, e.g. https://surviveuni.vercel.app (set after frontend deploy)
       - key: BACKEND_CORS_ORIGINS
-        sync: false  
+        sync: false
       - key: FRONTEND_HOST
-        sync: false  
+        sync: false
       - key: SENTRY_DSN
         value: ""
+      # Optional: only needed for the "Email me reminders" feature
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false

@@ -30,9 +30,7 @@ def read_tasks(session: SessionDep, current_user: CurrentUser) -> Any:
     Retrieve current user's tasks sorted by due date.
     """
     count_statement = (
-        select(func.count())
-        .select_from(Task)
-        .where(Task.owner_id == current_user.id)
+        select(func.count()).select_from(Task).where(Task.owner_id == current_user.id)
     )
     count = session.exec(count_statement).one()
 
@@ -175,9 +173,7 @@ def read_shared_tasks(session: SessionDep, token: str) -> Any:
     count = session.exec(count_statement).one()
 
     statement = (
-        select(Task)
-        .where(Task.owner_id == owner.id)
-        .order_by(col(Task.due_date).asc())
+        select(Task).where(Task.owner_id == owner.id).order_by(col(Task.due_date).asc())
     )
     tasks = session.exec(statement).all()
     return TasksPublic(

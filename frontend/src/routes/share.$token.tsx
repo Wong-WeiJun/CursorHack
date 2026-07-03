@@ -8,6 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import {
+  formatDueDate,
+  formatRelativeDue,
+  getUrgency,
+  urgencyClasses,
+} from "@/lib/tasks"
 
 export const Route = createFileRoute("/share/$token")({
   component: SharedTasks,
@@ -31,25 +37,15 @@ const priorityVariant: Record<
   low: "secondary",
 }
 
-function formatDueDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  })
-}
-
-function isOverdue(task: TaskPublic) {
-  return !task.is_done && new Date(task.due_date).getTime() < Date.now()
-}
-
 function SharedTaskRow({ task }: { task: TaskPublic }) {
+  const urgency = getUrgency(task)
+  const urgencyStyle = urgencyClasses(urgency)
+
   return (
     <Card
       className={cn(
-        "flex flex-row items-center justify-between gap-4 p-4",
-        task.is_done && "opacity-60",
+        "flex flex-row items-center justify-between gap-4 border-l-4 p-4",
+        task.is_done ? "border-l-muted opacity-60" : urgencyStyle.border,
       )}
     >
       <div className="min-w-0 space-y-1">
@@ -71,11 +67,14 @@ function SharedTaskRow({ task }: { task: TaskPublic }) {
         <p
           className={cn(
             "text-sm text-muted-foreground",
-            isOverdue(task) && "text-destructive",
+            !task.is_done && urgencyStyle.text,
           )}
         >
-          Due {formatDueDate(task.due_date)}
-          {isOverdue(task) && " · Overdue"}
+          <span className="font-medium">{formatRelativeDue(task)}</span>
+          <span className="text-muted-foreground">
+            {" · "}
+            {formatDueDate(task.due_date)}
+          </span>
         </p>
       </div>
     </Card>

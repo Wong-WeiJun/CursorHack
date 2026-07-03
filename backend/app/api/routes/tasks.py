@@ -1,5 +1,6 @@
 import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -9,6 +10,7 @@ from app.api.deps import CurrentUser, SessionDep
 from app.core.config import settings
 from app.models import (
     Message,
+    ReminderResult,
     ShareLink,
     Task,
     TaskCreate,
@@ -17,6 +19,7 @@ from app.models import (
     TaskUpdate,
     User,
 )
+from app.utils import send_resend_email
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -107,6 +110,53 @@ def share_tasks(session: SessionDep, current_user: CurrentUser) -> Any:
     return ShareLink(
         share_token=token,
         share_url=f"{settings.FRONTEND_HOST}/share/{token}",
+    )
+
+
+@router.post("/reminders/send", response_model=ReminderResult)
+def send_reminders(session: SessionDep, current_user: CurrentUser) -> Any:
+    """
+    Email the current user their unfinished tasks due within the next 24 hours.
+    """
+    if not settings.resend_enabled:
+        raise HTTPException(
+            status_code=400, detail="Email reminders are not configured"
+        )
+
+    now = datetime.now(timezone.utc)
+    window = now + timedelta(hours=24)
+    statement = (
+        select(Task)
+        .where(Task.owner_id == current_user.id)
+        .where(col(Task.is_done) == False)  # noqa: E712
+        .where(col(Task.due_date) <= window)
+        .order_by(col(Task.due_date).asc())
+    )
+    tasks = session.exec(statement).all()
+
+    if not tasks:
+        return ReminderResult(sent=0, message="No tasks due in the next 24 hours")
+
+    rows = "".join(
+        f"<li><strong>{task.title}</strong>"
+        f"{f' ({task.subject})' if task.subject else ''}"
+        f" — due {task.due_date.strftime('%a %d %b, %H:%M')}"
+        f" [{task.priority}]</li>"
+        for task in tasks
+    )
+    html = (
+        f"<h2>Your upcoming deadlines</h2>"
+        f"<p>You have {len(tasks)} task(s) due in the next 24 hours:</p>"
+        f"<ul>{rows}</ul>"
+        f"<p>— {settings.PROJECT_NAME}</p>"
+    )
+    send_resend_email(
+        to=current_user.email,
+        subject=f"{settings.PROJECT_NAME}: {len(tasks)} task(s) due soon",
+        html=html,
+    )
+    return ReminderResult(
+        sent=len(tasks), message=f"Sent reminder for {len(tasks)} task(s)"
     )
 
 

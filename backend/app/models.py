@@ -121,6 +121,11 @@ class ShareLink(SQLModel):
     share_url: str
 
 
+class ReminderResult(SQLModel):
+    sent: int
+    message: str
+
+
 # Generic message
 class Message(SQLModel):
     message: str

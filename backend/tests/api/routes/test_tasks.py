@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
@@ -57,9 +58,7 @@ def test_read_tasks_sorted_by_due_date(
         headers=normal_user_token_headers,
         json={"title": "Sooner", "due_date": _due(1), "priority": "high"},
     )
-    r = client.get(
-        f"{settings.API_V1_STR}/tasks/", headers=normal_user_token_headers
-    )
+    r = client.get(f"{settings.API_V1_STR}/tasks/", headers=normal_user_token_headers)
     assert r.status_code == 200
     content = r.json()
     assert content["count"] >= 2
@@ -148,3 +147,45 @@ def test_share_and_read_shared_tasks(
 def test_read_shared_tasks_bad_token(client: TestClient) -> None:
     r = client.get(f"{settings.API_V1_STR}/tasks/share/nonexistent-token")
     assert r.status_code == 404
+
+
+def test_send_reminders_not_configured(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "RESEND_API_KEY", None)
+    monkeypatch.setattr(settings, "RESEND_FROM_EMAIL", None)
+    r = client.post(
+        f"{settings.API_V1_STR}/tasks/reminders/send",
+        headers=normal_user_token_headers,
+    )
+    assert r.status_code == 400
+
+
+def test_send_reminders_happy_path(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client.post(
+        f"{settings.API_V1_STR}/tasks/",
+        headers=normal_user_token_headers,
+        json={"title": "Reminder task", "due_date": _due(0)},
+    )
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test")
+    monkeypatch.setattr(settings, "RESEND_FROM_EMAIL", "test@example.com")
+    sent_emails: list[dict[str, str]] = []
+    monkeypatch.setattr(
+        "app.api.routes.tasks.send_resend_email",
+        lambda **kwargs: sent_emails.append(kwargs),
+    )
+
+    r = client.post(
+        f"{settings.API_V1_STR}/tasks/reminders/send",
+        headers=normal_user_token_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["sent"] >= 1
+    assert len(sent_emails) == 1

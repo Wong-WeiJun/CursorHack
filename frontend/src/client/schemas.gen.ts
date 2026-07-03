@@ -126,6 +126,22 @@ export const PrivateUserCreateSchema = {
     title: 'PrivateUserCreate'
 } as const;
 
+export const ReminderResultSchema = {
+    properties: {
+        sent: {
+            type: 'integer',
+            title: 'Sent'
+        },
+        message: {
+            type: 'string',
+            title: 'Message'
+        }
+    },
+    type: 'object',
+    required: ['sent', 'message'],
+    title: 'ReminderResult'
+} as const;
+
 export const ShareLinkSchema = {
     properties: {
         share_token: {

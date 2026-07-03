@@ -57,9 +57,7 @@ class User(UserBase, table=True):
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
-    tasks: list["Task"] = Relationship(
-        back_populates="owner", cascade_delete=True
-    )
+    tasks: list["Task"] = Relationship(back_populates="owner", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
@@ -119,6 +117,11 @@ class TasksPublic(SQLModel):
 class ShareLink(SQLModel):
     share_token: str
     share_url: str
+
+
+class ReminderResult(SQLModel):
+    sent: int
+    message: str
 
 
 # Generic message

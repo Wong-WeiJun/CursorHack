@@ -48,25 +48,39 @@ class Settings(BaseSettings):
         ]
 
     PROJECT_NAME: str
-    POSTGRES_SERVER: str
+    # POSTGRES_* are only needed when DATABASE_URL is not provided (e.g. local
+    # docker). Managed providers like Neon are configured via DATABASE_URL alone.
+    POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_USER: str
+    POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
     DATABASE_URL: PostgresDsn | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
         if self.DATABASE_URL:
-            return self.DATABASE_URL
-        return PostgresDsn.build(
-            scheme="postgresql+psycopg",
-            username=self.POSTGRES_USER,
-            password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_SERVER,
-            port=self.POSTGRES_PORT,
-            path=self.POSTGRES_DB,
+            # Force the psycopg (v3) driver, since that's the installed adapter.
+            # Neon/most providers hand out plain "postgresql://" URLs which
+            # SQLAlchemy would otherwise route to psycopg2 (not installed).
+            url = str(self.DATABASE_URL)
+            if url.startswith("postgresql+"):
+                return url
+            if url.startswith("postgresql://"):
+                return url.replace("postgresql://", "postgresql+psycopg://", 1)
+            if url.startswith("postgres://"):
+                return url.replace("postgres://", "postgresql+psycopg://", 1)
+            return url
+        return str(
+            PostgresDsn.build(
+                scheme="postgresql+psycopg",
+                username=self.POSTGRES_USER,
+                password=self.POSTGRES_PASSWORD,
+                host=self.POSTGRES_SERVER,
+                port=self.POSTGRES_PORT,
+                path=self.POSTGRES_DB,
+            )
         )
 
     SMTP_TLS: bool = True
@@ -90,6 +104,14 @@ class Settings(BaseSettings):
     @property
     def emails_enabled(self) -> bool:
         return bool(self.SMTP_HOST and self.EMAILS_FROM_EMAIL)
+
+    RESEND_API_KEY: str | None = None
+    RESEND_FROM_EMAIL: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def resend_enabled(self) -> bool:
+        return bool(self.RESEND_API_KEY and self.RESEND_FROM_EMAIL)
 
     EMAIL_TEST_USER: EmailStr = "test@example.com"
     FIRST_SUPERUSER: EmailStr

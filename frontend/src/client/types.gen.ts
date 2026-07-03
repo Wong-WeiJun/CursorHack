@@ -29,6 +29,11 @@ export type PrivateUserCreate = {
     is_verified?: boolean;
 };
 
+export type ReminderResult = {
+    sent: number;
+    message: string;
+};
+
 export type ShareLink = {
     share_token: string;
     share_url: string;
@@ -182,6 +187,8 @@ export type TasksDeleteTaskData = {
 export type TasksDeleteTaskResponse = (Message);
 
 export type TasksShareTasksResponse = (ShareLink);
+
+export type TasksSendRemindersResponse = (ReminderResult);
 
 export type TasksReadSharedTasksData = {
     token: string;

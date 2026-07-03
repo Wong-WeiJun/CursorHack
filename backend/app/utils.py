@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import emails  # type: ignore[import-untyped]
+import httpx
 import jwt
 from jinja2 import Template
 from jwt.exceptions import InvalidTokenError
@@ -53,6 +54,23 @@ def send_email(
         smtp_options["password"] = settings.SMTP_PASSWORD
     response = message.send(to=email_to, smtp=smtp_options)
     logger.info(f"send email result: {response}")
+
+
+def send_resend_email(*, to: str, subject: str, html: str) -> None:
+    assert settings.resend_enabled, "Resend is not configured"
+    response = httpx.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
+        json={
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": [to],
+            "subject": subject,
+            "html": html,
+        },
+        timeout=10.0,
+    )
+    response.raise_for_status()
+    logger.info(f"resend email result: {response.status_code}")
 
 
 def generate_test_email(email_to: str) -> EmailData:

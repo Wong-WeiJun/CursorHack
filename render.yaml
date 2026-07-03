@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: fastskeleton-api
+    runtime: python
+    runtimeVersion: "3.12"
+    rootDir: backend
+    buildCommand: "bash render-build.sh"
+    startCommand: "uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/v1/utils/health-check/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false  # Set manually in Render dashboard with your Neon URL
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FIRST_SUPERUSER
+        value: admin@example.com
+      - key: FIRST_SUPERUSER_PASSWORD
+        sync: false  # Set manually in Render dashboard
+      - key: BACKEND_CORS_ORIGINS
+        sync: false  # Set to your Vercel URL, e.g., "https://my-app.vercel.app"
+      - key: FRONTEND_HOST
+        sync: false  # Set to your Vercel URL
+      - key: SENTRY_DSN
+        value: ""

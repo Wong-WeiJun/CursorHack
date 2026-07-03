@@ -1,0 +1,53 @@
+# ── Deploy: Fly.io ────────────────────────────────────────────────────────────
+# Copy this to .github/workflows/deploy.yml when deploying to Fly.io.
+# Assumes a fly.toml exists in both backend/ and frontend/.
+#
+# Secrets required:
+#   FLY_API_TOKEN  - from `fly tokens create deploy`
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions: {}
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy backend
+        run: flyctl deploy --remote-only
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy-backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy frontend
+        run: flyctl deploy --remote-only
+        working-directory: frontend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Summary
+        run: echo "### Deployed to Fly.io :rocket:" >> $GITHUB_STEP_SUMMARY

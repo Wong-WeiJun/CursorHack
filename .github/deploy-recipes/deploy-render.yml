@@ -1,0 +1,44 @@
+# ── Deploy: Render ────────────────────────────────────────────────────────────
+# Copy this to .github/workflows/deploy.yml when deploying to Render.
+# Render can also auto-deploy on push — this is the manual/release trigger version.
+#
+# Secrets required:
+#   RENDER_API_KEY          - from https://dashboard.render.com/u/settings#api-keys
+#   RENDER_SERVICE_ID_BACKEND   - service ID from the Render dashboard URL
+#   RENDER_SERVICE_ID_FRONTEND  - service ID from the Render dashboard URL
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger backend deploy
+        run: |
+          curl -fsSL \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID_BACKEND }}/deploys" \
+            -d '{"clearCache": false}'
+
+      - name: Trigger frontend deploy
+        run: |
+          curl -fsSL \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID_FRONTEND }}/deploys" \
+            -d '{"clearCache": false}'
+
+      - name: Summary
+        run: echo "### Deploy triggered on Render :rocket:" >> $GITHUB_STEP_SUMMARY

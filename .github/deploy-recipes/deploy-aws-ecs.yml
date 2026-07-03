@@ -1,0 +1,101 @@
+# ── Deploy: AWS ECS Fargate ──────────────────────────────────────────────────
+# Copy this to .github/workflows/deploy.yml when deploying to ECS.
+#
+# Secrets required:
+#   AWS_ACCOUNT_ID       - your AWS account ID
+#   AWS_ROLE_ARN         - IAM role ARN for OIDC (no long-lived keys)
+#   ECR_REPO_BACKEND     - ECR repo name for backend image
+#   ECR_REPO_FRONTEND    - ECR repo name for frontend image
+#   ECS_CLUSTER          - ECS cluster name
+#   ECS_SERVICE_BACKEND  - ECS service name for backend
+#   ECS_SERVICE_FRONTEND - ECS service name for frontend
+#   VITE_API_URL         - production API URL passed into frontend build
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+  release:
+    types:
+      - published
+
+permissions: {}
+
+env:
+  AWS_REGION: ap-southeast-1  # change me
+  BACKEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/${{ secrets.ECR_REPO_BACKEND }}
+  FRONTEND_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/${{ secrets.ECR_REPO_FRONTEND }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: tag
+        run: echo "TAG=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push backend
+        run: |
+          docker build --file backend/Dockerfile \
+            --tag $BACKEND_IMAGE:${{ steps.tag.outputs.TAG }} \
+            --tag $BACKEND_IMAGE:latest .
+          docker push $BACKEND_IMAGE:${{ steps.tag.outputs.TAG }}
+          docker push $BACKEND_IMAGE:latest
+
+      - name: Build & push frontend
+        run: |
+          docker build --file frontend/Dockerfile \
+            --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} \
+            --build-arg NODE_ENV=production \
+            --tag $FRONTEND_IMAGE:${{ steps.tag.outputs.TAG }} \
+            --tag $FRONTEND_IMAGE:latest .
+          docker push $FRONTEND_IMAGE:${{ steps.tag.outputs.TAG }}
+          docker push $FRONTEND_IMAGE:latest
+
+      - name: Deploy backend to ECS
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --service ${{ secrets.ECS_SERVICE_BACKEND }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deploy frontend to ECS
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --service ${{ secrets.ECS_SERVICE_FRONTEND }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Summary
+        run: |
+          echo "### Deployed to ECS :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "Tag: \`${{ steps.tag.outputs.TAG }}\`" >> $GITHUB_STEP_SUMMARY

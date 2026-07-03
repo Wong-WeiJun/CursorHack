@@ -1,0 +1,53 @@
+# ── Deploy: VPS / bare server (SSH + Docker Compose) ─────────────────────────
+# Copy this to .github/workflows/deploy.yml for a $5 DigitalOcean/Hetzner VPS.
+# Assumes docker + docker compose are installed on the server.
+#
+# Secrets required:
+#   SSH_HOST          - server IP or hostname
+#   SSH_USER          - SSH user (e.g. deploy or ubuntu)
+#   SSH_PRIVATE_KEY   - private key that has access to the server
+#   SSH_PORT          - SSH port (usually 22)
+#   VITE_API_URL      - production API URL for frontend build arg
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e
+            cd ~/app   # change to wherever you cloned the repo on the server
+            git pull origin main
+            VITE_API_URL=${{ secrets.VITE_API_URL }} docker compose build
+            docker compose up -d --remove-orphans
+            docker compose exec -T backend bash scripts/prestart.sh
+            docker image prune -f
+          EOF
+
+      - name: Summary
+        run: echo "### Deployed to VPS :rocket:" >> $GITHUB_STEP_SUMMARY

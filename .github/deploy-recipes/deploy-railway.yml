@@ -1,0 +1,45 @@
+# ── Deploy: Railway ───────────────────────────────────────────────────────────
+# Copy this to .github/workflows/deploy.yml when deploying to Railway.
+# Railway can also auto-deploy from GitHub — this is the explicit trigger version.
+#
+# Secrets required:
+#   RAILWAY_TOKEN               - from https://railway.app/account/tokens
+#   RAILWAY_SERVICE_BACKEND_ID  - from your Railway project's service settings
+#   RAILWAY_SERVICE_FRONTEND_ID - from your Railway project's service settings
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy backend
+        run: railway up --service ${{ secrets.RAILWAY_SERVICE_BACKEND_ID }}
+        working-directory: backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy frontend
+        run: railway up --service ${{ secrets.RAILWAY_SERVICE_FRONTEND_ID }}
+        working-directory: frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Summary
+        run: echo "### Deployed to Railway :rocket:" >> $GITHUB_STEP_SUMMARY

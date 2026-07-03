@@ -1,82 +1,121 @@
-# FastSkeleton
+# Duely — never miss a deadline
 
-Personal fork of [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template), cleaned up for solo projects and hackathons.
+A deadline and task tracker built for the reality of student life. Duely pulls
+every assignment, club task, campus event, and reminder into one place and
+sorts it by **what needs you first** — not just alphabetically or by a date
+buried in a table.
 
-## Stack
+Built for the Cursor Hackathon.
+
+---
+
+## The problem
+
+Students don't miss deadlines because they don't care — they miss them because
+their deadlines are scattered across the syllabus, group chats, club emails, and
+sticky notes. Generic to-do apps make it worse: a flat, alphabetized list treats
+"lab report due in 2 hours" the same as "reading due next month." Duely answers
+the only question that matters at 11pm: *what needs me right now?*
+
+## Features
+
+- **Urgency-first design** — every task is color-coded by time remaining
+  (overdue → due soon → today → this week → later), with a banner that surfaces
+  what's due today.
+- **Organized by student life** — group tasks into **Class, Club, Campus,
+  Friends, Personal**, each with a free-text label (e.g. `CS101`, `Chess Club`).
+- **Week view** — tasks auto-group into Today / Tomorrow / This Week / Later.
+- **The essentials, done well** — create, edit, complete, delete, notes, search,
+  filter (area/label), and sort (due date / priority). Loading, empty, and error
+  states everywhere.
+- **Share your list** — generate a read-only public link for a study partner or
+  group. No account needed to view.
+- **Email reminders** — one click emails you everything due in the next 24 hours
+  (via Resend).
+- **A dashboard that motivates** — friendly greeting, live stats (overdue / due
+  today / this week / completed), progress bars per subject, and a by-area
+  breakdown.
+
+## Who it's for
+
+Every student — high-schoolers, university students, bootcampers, and online
+learners — juggling coursework alongside clubs, campus life, work, and friends.
+
+---
+
+## Tech stack
 
 | Layer | Tech |
 |-------|------|
-| Backend | FastAPI, SQLModel, Alembic, PostgreSQL |
-| Frontend | React 19, TanStack Router/Query/Table, shadcn/ui, Tailwind v4 |
+| Backend | FastAPI, SQLModel, Alembic, PostgreSQL (Neon) |
+| Frontend | React 19, TanStack Router/Query, shadcn/ui, Tailwind v4 |
 | Auth | JWT (PyJWT + pwdlib argon2) |
-| Dev | Docker Compose, uv, bun |
-| CI | GitHub Actions (ci, deploy, pre-commit) |
+| Email | Resend (HTTP API) |
+| Tooling | uv, bun, Docker Compose |
+| Deploy | Vercel (frontend) · Render (backend) · Neon (database) |
 
-## Quickstart
+The frontend talks to the backend through a **type-safe, auto-generated API
+client** — change a SQLModel model, run `make generate-client`, and the
+TypeScript types update everywhere.
+
+## Architecture
+
+```
+┌──────────────┐     ┌─────────────────────┐     ┌─────────────┐
+│   Vercel     │────▶│   Render            │────▶│   Neon      │
+│  (React SPA) │     │  (FastAPI + Alembic)│     │  (Postgres) │
+└──────────────┘     └─────────────────────┘     └─────────────┘
+```
+
+## Quickstart (local)
 
 ```bash
-# 1. Clone and set up env
-git clone <your-repo>
-make env          # copies .env.example → .env, then fill in your values
+# 1. Set up env
+make env            # copies .env.example → .env, then fill in your values
 
-# 2. Start the full stack
+# 2. Start the full stack (Docker)
 make dev
 
-# 3. Open
-#   API docs:  http://localhost:8000/docs
-#   Frontend:  http://localhost:5173
-#   Adminer:   http://localhost:8080
+# Or run each side locally:
+make dev-backend    # FastAPI on http://localhost:8000  (docs at /docs)
+make dev-frontend   # Vite on   http://localhost:5173
 ```
 
 ## Common commands
 
 ```bash
-make test           # run backend tests
-make lint           # ruff + biome
-make migrate        # alembic upgrade head
-make migration      # create a new migration (prompts for name)
-make reset-db       # wipe and re-migrate (local only)
-make generate-client  # regenerate frontend API client from OpenAPI schema
-make clean          # stop containers + remove volumes
+make test              # run backend tests (pytest)
+make lint              # ruff + biome
+make migrate           # alembic upgrade head
+make migration         # create a new migration (prompts for name)
+make generate-client   # regenerate the frontend API client from OpenAPI
 ```
 
-## GitHub Actions
+## Data model
 
-Three workflows — nothing more:
+A single `Task` owned by a user:
 
-| Workflow | Trigger | Does |
-|----------|---------|------|
-| `ci.yml` | push/PR to `main` | lint backend+frontend, run tests, smoke test |
-| `deploy.yml` | manual or on release | build + push to ECR, deploy to ECS |
-| `pre-commit.yml` | PR | runs pre-commit hooks |
+| Field | Notes |
+|-------|-------|
+| `title` | required |
+| `category` | `class` · `club` · `campus` · `social` · `personal` |
+| `subject` | free-text label within an area |
+| `notes` | optional details |
+| `due_date` | timezone-aware |
+| `priority` | `high` · `medium` · `low` |
+| `is_done` | complete / undo |
 
-### Secrets needed for deploy
+Sharing is a rotating `share_token` on the user; a public
+`GET /tasks/share/{token}` returns that user's tasks read-only.
 
-| Secret | Description |
-|--------|-------------|
-| `AWS_ACCOUNT_ID` | Your AWS account ID |
-| `AWS_ROLE_ARN` | IAM role ARN for OIDC (no long-lived keys) |
-| `ECR_REPO_BACKEND` | ECR repo name for backend image |
-| `ECR_REPO_FRONTEND` | ECR repo name for frontend image |
-| `VITE_API_URL` | Production API URL passed to frontend build |
-| `ECS_CLUSTER` | ECS cluster name (if using Fargate) |
-| `ECS_SERVICE_BACKEND` | ECS service name for backend |
-| `ECS_SERVICE_FRONTEND` | ECS service name for frontend |
+## Deployment
 
-> **OIDC setup:** Add a GitHub OIDC identity provider to your AWS account and attach a role — no `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` needed in secrets.
+Deploy free on Vercel + Render + Neon — see [DEPLOY.md](DEPLOY.md) for the full
+step-by-step (env vars, Neon SSL/driver notes, and the CORS wiring).
 
-## What changed from upstream
+## Built with Cursor
 
-- **GitHub Actions:** removed 8 org-specific workflows (`add-to-project`, `issue-manager`, `latest-changes`, `smokeshow`, `labeler`, `guard-dependencies`, `detect-conflicts`, `zizmor`). Deploy workflows replaced with ECR+ECS flow on GitHub-hosted runners. Pre-commit simplified (no auto-push, no `PRE_COMMIT` token secret needed).
-- **Branch:** all `master` references changed to `main`.
-- **Makefile:** added top-level task runner.
-- **`.env.example`:** replaces the committed `.env` with a proper example file. No `changethis` defaults.
-- **Copier scaffolding:** `.copier/` and `copier.yml` deleted (template generation tooling, not needed in a fork).
-- **Coverage gate:** removed `--fail-under=90` from CI (add it back once you have meaningful coverage).
-
-## Customising for a new project
-
-1. Rename `Item`/`items` throughout `backend/app/` to your domain model
-2. Update `PROJECT_NAME` in `.env`
-3. Update `AWS_REGION` and repo names in `deploy.yml`
-4. Delete `backend/app/alembic/versions/` migrations and start fresh with `make migration`
+The whole loop for each feature — SQLModel model → Alembic migration → FastAPI
+route *with pytest tests* → client regen → React page with every state handled —
+was built agentically in Cursor. The result isn't just generated code, but a
+coherent, deployable product assembled at hackathon speed.

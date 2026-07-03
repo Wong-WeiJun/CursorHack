@@ -42,16 +42,22 @@ export type ShareLink = {
 export type TaskCreate = {
     title: string;
     subject?: (string | null);
+    category?: 'class' | 'club' | 'campus' | 'social' | 'personal';
+    notes?: (string | null);
     due_date: string;
     priority?: 'high' | 'medium' | 'low';
     is_done?: boolean;
 };
+
+export type category = 'class' | 'club' | 'campus' | 'social' | 'personal';
 
 export type priority = 'high' | 'medium' | 'low';
 
 export type TaskPublic = {
     title: string;
     subject?: (string | null);
+    category?: 'class' | 'club' | 'campus' | 'social' | 'personal';
+    notes?: (string | null);
     due_date: string;
     priority?: 'high' | 'medium' | 'low';
     is_done?: boolean;
@@ -67,6 +73,8 @@ export type TasksPublic = {
 export type TaskUpdate = {
     title?: (string | null);
     subject?: (string | null);
+    category?: ('class' | 'club' | 'campus' | 'social' | 'personal' | null);
+    notes?: (string | null);
     due_date?: (string | null);
     priority?: ('high' | 'medium' | 'low' | null);
     is_done?: (boolean | null);

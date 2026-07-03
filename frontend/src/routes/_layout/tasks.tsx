@@ -4,18 +4,31 @@ import { createFileRoute } from "@tanstack/react-router"
 import {
   AlertTriangle,
   Bell,
+  BookOpen,
   CalendarClock,
   Check,
+  type LucideIcon,
+  MapPin,
+  PartyPopper,
+  Pencil,
   Plus,
+  Search,
   Share2,
   Trash2,
   Undo2,
+  UserRound,
+  Users,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { type ReactNode, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type TaskCreate, type TaskPublic, TasksService } from "@/client"
+import {
+  type TaskCreate,
+  type TaskPublic,
+  TasksService,
+  type TaskUpdate,
+} from "@/client"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -48,16 +61,25 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Textarea } from "@/components/ui/textarea"
 import useCustomToast from "@/hooks/useCustomToast"
 import {
+  CATEGORIES,
+  categoryLabel,
+  categorySubjectHint,
   dueTodayCount,
   formatDueDate,
   formatRelativeDue,
   getUrgency,
   groupTasks,
+  normalizeCategory,
   overdueCount,
+  type SortKey,
+  searchTasks,
+  sortTasks,
   subjectOptions,
   subjectProgress,
+  type TaskCategory,
   urgencyClasses,
 } from "@/lib/tasks"
 import { cn } from "@/lib/utils"
@@ -66,7 +88,7 @@ import { handleError } from "@/utils"
 export const Route = createFileRoute("/_layout/tasks")({
   component: Tasks,
   head: () => ({
-    meta: [{ title: "Tasks - SurviveUni" }],
+    meta: [{ title: "Tasks - Duely" }],
   }),
 })
 
@@ -85,18 +107,44 @@ const priorityVariant: Record<
   low: "secondary",
 }
 
-const ALL_SUBJECTS = "all"
+const categoryIcon: Record<TaskCategory, LucideIcon> = {
+  class: BookOpen,
+  club: Users,
+  campus: MapPin,
+  social: PartyPopper,
+  personal: UserRound,
+}
+
+const ALL = "all"
+
+function toDateTimeLocalValue(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`
+}
 
 const formSchema = z.object({
   title: z.string().min(1, { message: "Title is required" }),
+  category: z.enum(["class", "club", "campus", "social", "personal"]),
   subject: z.string().optional(),
   due_date: z.string().min(1, { message: "Due date is required" }),
   priority: z.enum(["high", "medium", "low"]),
+  notes: z.string().optional(),
 })
 
 type FormData = z.infer<typeof formSchema>
 
-function CreateTaskDialog() {
+function TaskFormDialog({
+  task,
+  trigger,
+}: {
+  task?: TaskPublic
+  trigger: ReactNode
+}) {
+  const isEdit = Boolean(task)
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
@@ -105,19 +153,38 @@ function CreateTaskDialog() {
     resolver: zodResolver(formSchema),
     mode: "onBlur",
     defaultValues: {
-      title: "",
-      subject: "",
-      due_date: "",
-      priority: "medium",
+      title: task?.title ?? "",
+      category: normalizeCategory(task?.category),
+      subject: task?.subject ?? "",
+      due_date: task ? toDateTimeLocalValue(task.due_date) : "",
+      priority: (task?.priority ?? "medium") as FormData["priority"],
+      notes: task?.notes ?? "",
     },
   })
 
+  const category = form.watch("category")
+
   const mutation = useMutation({
-    mutationFn: (data: TaskCreate) =>
-      TasksService.createTask({ requestBody: data }),
+    mutationFn: (values: FormData) => {
+      const body = {
+        title: values.title,
+        category: values.category,
+        subject: values.subject ? values.subject : null,
+        due_date: new Date(values.due_date).toISOString(),
+        priority: values.priority,
+        notes: values.notes ? values.notes : null,
+      }
+      if (task) {
+        return TasksService.updateTask({
+          taskId: task.id,
+          requestBody: body satisfies TaskUpdate,
+        })
+      }
+      return TasksService.createTask({ requestBody: body satisfies TaskCreate })
+    },
     onSuccess: () => {
-      showSuccessToast("Task created")
-      form.reset()
+      showSuccessToast(isEdit ? "Task updated" : "Task created")
+      if (!isEdit) form.reset()
       setIsOpen(false)
     },
     onError: handleError.bind(showErrorToast),
@@ -126,33 +193,20 @@ function CreateTaskDialog() {
     },
   })
 
-  const onSubmit = (data: FormData) => {
-    const requestBody: TaskCreate = {
-      title: data.title,
-      subject: data.subject ? data.subject : null,
-      due_date: new Date(data.due_date).toISOString(),
-      priority: data.priority,
-    }
-    mutation.mutate(requestBody)
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 size-4" />
-          Add Task
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Task</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit task" : "Add task"}</DialogTitle>
           <DialogDescription>
-            Track a new assignment or deadline.
+            {isEdit
+              ? "Update the details of this task."
+              : "Track a new deadline, meeting, or plan."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
+          <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))}>
             <div className="grid gap-4 py-4">
               <FormField
                 control={form.control}
@@ -170,14 +224,73 @@ function CreateTaskDialog() {
                 )}
               />
 
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Area</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {CATEGORIES.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {categoryLabel[c]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
                 name="subject"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subject</FormLabel>
+                    <FormLabel>Label</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. CS101" {...field} />
+                      <Input
+                        placeholder={categorySubjectHint[category]}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -202,22 +315,16 @@ function CreateTaskDialog() {
 
               <FormField
                 control={form.control}
-                name="priority"
+                name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Anything to remember? (optional)"
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -231,7 +338,7 @@ function CreateTaskDialog() {
                 </Button>
               </DialogClose>
               <LoadingButton type="submit" loading={mutation.isPending}>
-                Save
+                {isEdit ? "Save changes" : "Save"}
               </LoadingButton>
             </DialogFooter>
           </form>
@@ -266,8 +373,9 @@ function TaskRow({ task }: { task: TaskPublic }) {
     },
   })
 
-  const urgency = getUrgency(task)
-  const urgencyStyle = urgencyClasses(urgency)
+  const urgencyStyle = urgencyClasses(getUrgency(task))
+  const category = normalizeCategory(task.category)
+  const CategoryIcon = categoryIcon[category]
 
   return (
     <Card
@@ -277,7 +385,7 @@ function TaskRow({ task }: { task: TaskPublic }) {
       )}
     >
       <div className="min-w-0 space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <p
             className={cn(
               "truncate font-medium",
@@ -286,6 +394,10 @@ function TaskRow({ task }: { task: TaskPublic }) {
           >
             {task.title}
           </p>
+          <Badge variant="secondary" className="gap-1">
+            <CategoryIcon className="size-3" />
+            {categoryLabel[category]}
+          </Badge>
           {task.subject && <Badge variant="outline">{task.subject}</Badge>}
           <Badge variant={priorityVariant[task.priority ?? "medium"]}>
             {priorityLabel[task.priority ?? "medium"]}
@@ -303,8 +415,13 @@ function TaskRow({ task }: { task: TaskPublic }) {
             {formatDueDate(task.due_date)}
           </span>
         </p>
+        {task.notes && (
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {task.notes}
+          </p>
+        )}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="outline"
           size="sm"
@@ -323,6 +440,14 @@ function TaskRow({ task }: { task: TaskPublic }) {
             </>
           )}
         </Button>
+        <TaskFormDialog
+          task={task}
+          trigger={
+            <Button variant="ghost" size="icon" aria-label="Edit task">
+              <Pencil className="size-4" />
+            </Button>
+          }
+        />
         <Button
           variant="ghost"
           size="icon"
@@ -413,7 +538,7 @@ function DueBanner({ tasks }: { tasks: TaskPublic[] }) {
           ? `${overdue} task${overdue === 1 ? " is" : "s are"} overdue — tackle ${
               overdue === 1 ? "it" : "them"
             } first.`
-          : "Stay on top of today's deadlines to keep surviving uni."}
+          : "Stay on top of today's deadlines and keep your week on track."}
       </AlertDescription>
     </Alert>
   )
@@ -460,18 +585,26 @@ function Tasks() {
     queryFn: () => TasksService.readTasks(),
   })
 
-  const [subject, setSubject] = useState<string>(ALL_SUBJECTS)
+  const [query, setQuery] = useState("")
+  const [category, setCategory] = useState<string>(ALL)
+  const [subject, setSubject] = useState<string>(ALL)
+  const [sortKey, setSortKey] = useState<SortKey>("due")
 
-  const tasks = data?.data ?? []
+  const tasks = useMemo(() => data?.data ?? [], [data])
   const subjects = useMemo(() => subjectOptions(tasks), [tasks])
 
-  const filteredTasks = useMemo(
-    () =>
-      subject === ALL_SUBJECTS
-        ? tasks
-        : tasks.filter((task) => task.subject?.trim() === subject),
-    [tasks, subject],
-  )
+  const filteredTasks = useMemo(() => {
+    const searched = searchTasks(tasks, query)
+    const byCategory =
+      category === ALL
+        ? searched
+        : searched.filter((t) => normalizeCategory(t.category) === category)
+    const bySubject =
+      subject === ALL
+        ? byCategory
+        : byCategory.filter((t) => t.subject?.trim() === subject)
+    return sortTasks(bySubject, sortKey)
+  }, [tasks, query, category, subject, sortKey])
 
   const groups = useMemo(() => groupTasks(filteredTasks), [filteredTasks])
 
@@ -481,13 +614,20 @@ function Tasks() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
           <p className="text-muted-foreground">
-            Your assignments and deadlines, grouped by when they're due.
+            Everything on your plate, grouped by when it's due.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <RemindButton />
           <ShareButton />
-          <CreateTaskDialog />
+          <TaskFormDialog
+            trigger={
+              <Button>
+                <Plus className="mr-2 size-4" />
+                Add task
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -509,7 +649,7 @@ function Tasks() {
         <Card className="flex flex-col items-center gap-2 p-12 text-center">
           <p className="font-medium">No tasks yet</p>
           <p className="text-sm text-muted-foreground">
-            Add your first deadline to start surviving uni.
+            Add your first deadline and Duely will keep it in view.
           </p>
         </Card>
       )}
@@ -519,13 +659,37 @@ function Tasks() {
           <DueBanner tasks={tasks} />
           <SubjectProgressPanel tasks={filteredTasks} />
 
-          <div className="flex items-center gap-2">
-            <Select value={subject} onValueChange={setSubject}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Filter by subject" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[12rem] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search tasks"
+                className="pl-9"
+              />
+            </div>
+
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Area" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_SUBJECTS}>All subjects</SelectItem>
+                <SelectItem value={ALL}>All areas</SelectItem>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {categoryLabel[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={subject} onValueChange={setSubject}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Subject" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All labels</SelectItem>
                 {subjects.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
@@ -533,11 +697,24 @@ function Tasks() {
                 ))}
               </SelectContent>
             </Select>
+
+            <Select
+              value={sortKey}
+              onValueChange={(v) => setSortKey(v as SortKey)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="due">Sort: Due date</SelectItem>
+                <SelectItem value="priority">Sort: Priority</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {groups.length === 0 ? (
             <Card className="p-8 text-center text-muted-foreground">
-              No tasks match this filter.
+              No tasks match your filters.
             </Card>
           ) : (
             <div className="flex flex-col gap-6">

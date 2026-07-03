@@ -7,18 +7,20 @@ import { Logo } from "@/components/Common/Logo"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/utils"
 import {
+  categoryLabel,
   formatDueDate,
   formatRelativeDue,
   getUrgency,
+  normalizeCategory,
   urgencyClasses,
 } from "@/lib/tasks"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/share/$token")({
   component: SharedTasks,
   head: () => ({
-    meta: [{ title: "Shared Tasks - SurviveUni" }],
+    meta: [{ title: "Shared Tasks - Duely" }],
   }),
 })
 
@@ -49,7 +51,7 @@ function SharedTaskRow({ task }: { task: TaskPublic }) {
       )}
     >
       <div className="min-w-0 space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <p
             className={cn(
               "truncate font-medium",
@@ -58,6 +60,9 @@ function SharedTaskRow({ task }: { task: TaskPublic }) {
           >
             {task.title}
           </p>
+          <Badge variant="secondary">
+            {categoryLabel[normalizeCategory(task.category)]}
+          </Badge>
           {task.subject && <Badge variant="outline">{task.subject}</Badge>}
           <Badge variant={priorityVariant[task.priority ?? "medium"]}>
             {priorityLabel[task.priority ?? "medium"]}
@@ -99,9 +104,9 @@ function SharedTasks() {
       <main className="flex-1 px-6 py-8 md:px-10">
         <div className="mx-auto max-w-3xl space-y-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Shared Tasks</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Shared tasks</h1>
             <p className="text-muted-foreground">
-              A read-only view of this student's deadlines.
+              A read-only view of someone's deadlines, shared with you.
             </p>
           </div>
 

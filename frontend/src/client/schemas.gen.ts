@@ -178,6 +178,24 @@ export const TaskCreateSchema = {
             ],
             title: 'Subject'
         },
+        category: {
+            type: 'string',
+            enum: ['class', 'club', 'campus', 'social', 'personal'],
+            title: 'Category',
+            default: 'class'
+        },
+        notes: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 2000
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notes'
+        },
         due_date: {
             type: 'string',
             format: 'date-time',
@@ -219,6 +237,24 @@ export const TaskPublicSchema = {
                 }
             ],
             title: 'Subject'
+        },
+        category: {
+            type: 'string',
+            enum: ['class', 'club', 'campus', 'social', 'personal'],
+            title: 'Category',
+            default: 'class'
+        },
+        notes: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 2000
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notes'
         },
         due_date: {
             type: 'string',
@@ -285,6 +321,30 @@ export const TaskUpdateSchema = {
                 }
             ],
             title: 'Subject'
+        },
+        category: {
+            anyOf: [
+                {
+                    type: 'string',
+                    enum: ['class', 'club', 'campus', 'social', 'personal']
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Category'
+        },
+        notes: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 2000
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Notes'
         },
         due_date: {
             anyOf: [
